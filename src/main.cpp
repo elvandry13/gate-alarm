@@ -20,8 +20,8 @@
 #define deviceGateState "gate-state"
 #define deviceSwitchStatus "switch-status"
 
-#define ALARM 7 // Alarm pin on D7
-#define SW 4 // Button pin on D4
+#define ALARM D7 // Alarm pin on D7
+#define SW D4 // Button pin on D4
 
 AntaresESP8266HTTP antares(ACCESSKEY);
 

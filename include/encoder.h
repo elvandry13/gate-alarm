@@ -9,8 +9,8 @@
  * 
  */
 #include <Arduino.h>
-#define outputA 2 // CLK pin on D2
-#define outputB 3 // DT pin on D3
+#define outputA D2 // CLK pin on D2
+#define outputB D3 // DT pin on D3
 
 /**
  * @brief Rotary Encoder Setup Pin
