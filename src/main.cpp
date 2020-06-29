@@ -10,11 +10,25 @@
  */
 #include <Arduino.h>
 #include "encoder.h"
+#include "AntaresESP8266HTTP.h"
+
+#define ACCESSKEY "your-access-key"
+#define WIFISSID "your-wifi-ssid"
+#define PASSWORD "your-wifi-password"
+
+#define projectName "smart-gate"
+#define deviceGateState "gate-state"
+#define deviceSwitchStatus "switch-status"
 
 #define ALARM 7 // Alarm pin on D7
 #define SW 4 // Button pin on D4
 
+AntaresESP8266HTTP antares(ACCESSKEY);
+
+unsigned long lastDataSend = 0;
+unsigned long lastDelay = 0;
 unsigned long lastButtonPress = 0;
+String gateState;
 
 void setup()
 {
@@ -30,6 +44,10 @@ void setup()
 
     // Button pin set as input
     pinMode(SW, INPUT_PULLUP);
+
+    // Antares connection setup
+    antares.setDebug(true);
+    antares.wifiConnection(WIFISSID,PASSWORD);
 }
 
 void loop()
@@ -38,29 +56,67 @@ void loop()
     int gate_mv = encoder_pulse();
     Serial.println(gate_mv);
 
-    // Turn ON alarm if gate opened
     if (gate_mv > 20 || gate_mv < -20)
     {
         Serial.println("OPEN");
-        digitalWrite(ALARM, HIGH);
+        gateState = "open";
     }
     else
     {
-        // Read the button state
-        int btnState = digitalRead(SW);
+        Serial.println("CLOSED");
+        gateState = "closed";
+    }
+    
+    // Send current gate state interval 10 seconds
+    if (millis() - lastDataSend > 1000*10)
+    {
+        // Send data to Antares
+        antares.add("gateState", gateState);
+        antares.send(projectName, deviceGateState);
+    }
+    // Remember last data sent
+    lastDataSend = millis();
 
-        //If we detect LOW signal, button is pressed
-        if (btnState == LOW)
+    // Get switch status from Antares
+    antares.get(projectName, deviceSwitchStatus);
+    if (antares.getSuccess())
+    {
+        int status = antares.getInt("status");
+
+        // Alarm ON only when status = 1 and gate open
+        if (status == 1 && gateState == "open")
         {
-            // Turn OFF alarm if button pressed
-            if (millis() - lastButtonPress > 50)
-            {
-                Serial.println("Turn OFF Alarm");
-                digitalWrite(ALARM, LOW);
-            }
+            digitalWrite(ALARM, HIGH);
+        }
 
-            // Remember last button press event
-            lastButtonPress = millis();
+        // Alarm OFF when status = 0
+        else if (status == 0)
+        {
+            digitalWrite(ALARM, LOW);
         }
     }
+
+    // Turn OFF Alarm using shaft button
+    // Read the button state
+    int btnState = digitalRead(SW);
+
+    //If we detect LOW signal, button is pressed
+    if (btnState == LOW)
+    {
+        // Turn OFF alarm if button pressed
+        if (millis() - lastButtonPress > 50)
+        {
+            Serial.println("Turn OFF Alarm");
+            digitalWrite(ALARM, LOW);
+        }
+        // Remember last button press event
+        lastButtonPress = millis();
+    }
+
+    while (millis() < lastDelay + 1000*5)
+    {
+        // Delay 5 seconds
+    }
+    // Remember last delay
+    lastDelay = millis();
 }
