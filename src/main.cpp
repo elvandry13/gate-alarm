@@ -25,10 +25,11 @@
 
 AntaresESP8266HTTP antares(ACCESSKEY);
 
-unsigned long lastDataSend = 0;
 unsigned long lastDelay = 0;
 unsigned long lastButtonPress = 0;
 String gateState;
+bool currentState = false;
+bool lastState = false;
 
 void setup()
 {
@@ -60,22 +61,23 @@ void loop()
     {
         Serial.println("OPEN");
         gateState = "open";
+        currentState = true;
     }
     else
     {
         Serial.println("CLOSED");
         gateState = "closed";
+        currentState = false;
     }
-    
-    // Send current gate state interval 10 seconds
-    if (millis() - lastDataSend > 1000*10)
+
+    // Send data when gate state changed
+    if (currentState != lastState)
     {
         // Send data to Antares
         antares.add("gateState", gateState);
         antares.send(projectName, deviceGateState);
+        lastState = currentState;
     }
-    // Remember last data sent
-    lastDataSend = millis();
 
     // Get switch status from Antares
     antares.get(projectName, deviceSwitchStatus);
